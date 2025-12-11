@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Attendance — PSIT</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{
+      --bg: #ffe9e3;
+      --card: rgba(255,255,255,0.88);
+      --muted: rgba(120,120,120,0.75);
+      --accent-start: #ff9a5a;
+      --accent-end: #b983ff;
+      --glass-border: rgba(0,0,0,0.06);
+    }
+    [data-theme="dark"]{
+      --bg:#0b0b0c; --card:rgba(30,30,30,0.88); --muted:rgba(180,180,180,0.85);
+    }
+
+    html{font-family:'OnePlus Sans', Inter, 'Segoe UI', sans-serif; font-size:18px}
+    @media (max-width:480px){html{font-size:16px}}
+
+    body{margin:0;min-height:100vh;background:linear-gradient(135deg,#ff9a5a 0%,#ff6fa7 40%,#b983ff 100%);display:flex;align-items:center;justify-content:center;padding:2rem}
+
+    .panel{width:100%;max-width:1100px;border-radius:20px;background:var(--card);backdrop-filter:blur(18px) saturate(140%);border:1px solid var(--glass-border);box-shadow:0 40px 80px rgba(2,6,23,0.18);padding:1.25rem;transition:transform .2s ease, box-shadow .2s ease;} .panel:hover{transform:translateY(-6px);box-shadow:0 60px 110px rgba(2,6,23,0.22);} 
+    .card{background:rgba(255,255,255,0.90);border-radius:14px;padding:1rem;border:2px solid rgba(0,0,0,0.18);color:#222;font-weight:500;position:relative;transition:transform .2s ease, box-shadow .2s ease;}  .card:hover{transform:translateY(-6px) scale(1.015);box-shadow:0 28px 60px rgba(2,6,23,0.12);} .card:active{transform:translateY(-2px);} .card::after{content:"";position:absolute;inset:0;border-radius:14px;padding:1px;pointer-events:none;opacity:0.18;background:linear-gradient(90deg,#ff9a5a,#ff6fa7,#b983ff);filter:blur(14px);} 
+    label{display:block;font-size:0.95rem;margin-bottom:0.35rem;color:var(--muted)}
+    input{width:100%;padding:0.65rem;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:white;font-size:1rem}
+    [data-theme="dark"] input{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:var(--muted)}{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+
+    .ios-btn{border-radius:12px;padding:0.6rem 1rem;font-weight:700;border:none;transition:transform .12s ease,box-shadow .12s ease,opacity .12s ease}
+    .ios-btn.primary{background:linear-gradient(90deg,var(--accent-start),var(--accent-end));color:white}
+    .ios-btn.ghost{background:transparent;color:var(--muted);border:1px solid rgba(0,0,0,0.06)}
+
+    /* Reduce-motion toggle */
+    .toggle{--w:44px;--h:26px;position:relative;width:var(--w);height:var(--h);border-radius:999px;background:linear-gradient(180deg,rgba(0,0,0,0.06),rgba(0,0,0,0.02));border:1px solid rgba(0,0,0,0.06);cursor:pointer;display:inline-flex;align-items:center;padding:3px}
+    .toggle .knob{width:20px;height:20px;border-radius:999px;background:white;box-shadow:0 6px 10px rgba(2,6,23,0.12);transform:translateX(0);transition:transform .18s cubic-bezier(.2,.9,.2,1);} 
+    .toggle.on{background:linear-gradient(90deg,var(--accent-start),var(--accent-end));border:none}
+    .toggle.on .knob{transform:translateX(18px)}
+    [data-theme="dark"] .toggle{background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.04)}
+
+    /* pulse animation used by buttons */
+    .pulse{animation:pulse .36s ease-in-out}
+    @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(0.985)}100%{transform:scale(1)}}
+
+    .muted{color:var(--muted)}
+
+    /* Reward overlay (full-screen) */
+    .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:9999}
+    .overlay.show{display:flex}
+    .overlay .modal{width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
+    .overlay .card-large{background:linear-gradient(90deg,var(--accent-start),var(--accent-end));padding:2.5rem;border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,0.4);color:white;text-align:center}
+    .overlay h2{font-size:2.6rem;margin:0}
+    .overlay p{font-size:1.1rem;margin:0}
+
+    /* confetti pieces (SVG based) */
+    .confetti{position:fixed;left:0;top:0;pointer-events:none;z-index:10000}
+    @keyframes fall{0%{transform:translateY(-20vh) rotate(0) scale(1)}100%{transform:translateY(120vh) rotate(720deg) scale(1)}}
+
+    /* reduce motion safe */
+    .reduce-motion .confetti svg{animation:none;opacity:0}
+    .reduce-motion .overlay .card-large{transform:none;transition:none}
+
+    /* near-miss glowshake */
+    @keyframes glowshake{0%{transform:translateX(0);text-shadow:0 0 0px #ff6fa7}25%{transform:translateX(-3px);text-shadow:0 0 6px #ff6fa7}50%{transform:translateX(3px);text-shadow:0 0 10px #ff6fa7}75%{transform:translateX(-2px)}100%{transform:translateX(0);text-shadow:0 0 0px #ff6fa7}}
+
+    /* responsive */
+    @media (max-width:900px){.panel{padding:1rem}} 
+    @media (max-width:640px){.panel{padding:.85rem}.overlay h2{font-size:1.8rem}.overlay .card-large{padding:1.5rem}}
+
+    /* Ensure heading turns white in dark mode */
+    [data-theme="dark"] h1 { color: white !important; }
+    [data-theme="dark"] .card{background:rgba(30,30,30,0.90);border:2px solid rgba(255,255,255,0.22);} 
+  </style>
+  <!-- OnePlus Sans Font -->
+  <link href="https://fonts.cdnfonts.com/css/oneplus-sans" rel="stylesheet">
+</head>
+<body>
+  <main class="panel" id="panel" role="region" aria-label="Attendance Calculator">
+    <header class="flex items-center justify-between mb-4">
+      <div>
+        <img src="psit logo.jpg" alt="PSIT Logo" style="width:80px;margin-bottom:8px;display:block;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);""PSIT Logo" style="width:80px;margin-bottom:8px;display:block;" />
+        <h1 class="text-3xl font-extrabold" style="font-family:'OnePlus Sans'">PSIT — Attendance Calculator</h1>
+        <p class="muted" style="margin-top:6px">Quick attendance checks, reward eligibility and fine estimate.</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="themeToggle" class="ios-btn ghost" title="Toggle theme">🌗</button>
+      </div>
+    </header>
+
+    <form id="calcForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4" onsubmit="event.preventDefault(); doCalculate();">
+      <div class="card">
+        <label for="totalLectures">Total Lectures</label>
+        <input id="totalLectures" type="number" min="1" placeholder=" e.g., 60" required aria-label="Total Lectures">
+      </div>
+
+      <div class="card">
+        <label for="totalAbsent">Total Absent</label>
+        <input id="totalAbsent" type="number" min="0" placeholder=" e.g., 10" required aria-label="Total Absent">
+      </div>
+
+      <div class="card">
+        <label for="totalOAA">Total OAA</label>
+        <input id="totalOAA" type="number" min="0" placeholder=" e.g., 2" required aria-label="Total OAA">
+      </div>
+
+      <div class="md:col-span-3 flex gap-3 items-center">
+        <button class="ios-btn primary" id="calcBtn" type="submit">Calculate</button>
+        <button class="ios-btn ghost" type="button" id="resetBtn">Reset</button>
+
+        <div style="margin-left:auto;display:flex;align-items:center;gap:.6rem">
+          <div class="muted">Reduce Motion</div>
+          <div id="reduceMotionToggle" class="toggle" role="switch" aria-checked="false" tabindex="0">
+            <div class="knob"></div>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="card" style="background:rgba(255,255,255,0.95);border-radius:12px;padding:1rem">
+        <div class="muted">Current Attendance</div>
+        <div id="attendanceValue" style="font-size:1.6rem;font-weight:800;color:#111;margin-top:.35rem">0%</div>
+        <div id="effectiveAbsents" class="muted" style="margin-top:.4rem">Effective absents: —</div>
+      </div>
+
+      <div class="card" style="background:rgba(255,255,255,0.95);border-radius:12px;padding:1rem">
+        <div class="muted">Reward Eligibility</div>
+        <div id="rewardText" style="font-weight:700;margin-top:.35rem;color:#111">—</div>
+      </div>
+
+      <div class="card" style="background:rgba(255,255,255,0.95);border-radius:12px;padding:1rem">
+        <div class="muted">Fine (Below 90%)</div>
+        <div id="fineText" style="font-weight:700;margin-top:.35rem;color:#111">—</div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+      <div class="card" style="background:rgba(255,255,255,0.95);border-radius:12px;padding:1rem">
+        <div style="font-weight:700">₹5000 Reward (99–100%)</div>
+        <div style="margin-top:.35rem">You can still skip <strong id="skip5000">—</strong> lecture(s).</div>
+      </div>
+
+      <div class="card" style="background:rgba(255,255,255,0.95);border-radius:12px;padding:1rem">
+        <div style="font-weight:700">₹3000 Reward (97–98%)</div>
+        <div style="margin-top:.35rem">You can still skip <strong id="skip3000">—</strong> lecture(s).</div>
+      </div>
+
+      <div class="card" style="background:rgba(255,255,255,0.95);border-radius:12px;padding:1rem">
+        <div style="font-weight:700">Safe Zone (90%)</div>
+        <div style="margin-top:.35rem">You can still skip <strong id="skip90">—</strong> lecture(s) before dropping below 90%.</div>
+      </div>
+    </section>
+
+    <p class="muted" style="margin-top:14px;font-size:0.95rem">Notes: OAA reduces effective absents. Fine applies at ₹400 per percent below 90% (rounded up to nearest percent).</p>
+  </main>
+
+  <!-- Reward overlay + confetti container -->
+  <div id="rewardOverlay" class="overlay" role="dialog" aria-hidden="true">
+    <div class="modal">
+      <div class="card-large" id="rewardCard">
+        <h2 id="rewardTitle">Congratulations!</h2>
+        <p id="rewardMessage">You have achieved the reward.</p>
+        <div style="margin-top:1rem">
+          <button id="closeReward" class="ios-btn ghost">Close</button>
+        </div>
+      </div>
+    </div>
+    <div id="confetti" class="confetti" aria-hidden="true"></div>
+  </div>
+
+  <script>
+    const FINE_THRESHOLD = 90;
+    const FINE_PER_PERCENT = 400;
+    const panel = document.getElementById('panel');
+    const themeToggle = document.getElementById('themeToggle');
+    const rewardOverlay = document.getElementById('rewardOverlay');
+    const confettiContainer = document.getElementById('confetti');
+    const closeReward = document.getElementById('closeReward');
+
+    function applyTheme(mode){
+      document.documentElement.setAttribute('data-theme', mode);
+      localStorage.setItem('attendance_theme', mode);
+    }
+    const saved = localStorage.getItem('attendance_theme') || 'light';
+    applyTheme(saved);
+
+    // background themes cycle
+    const themes = ["sunset","nord","apple","neon"];
+    let currentThemeIndex = themes.indexOf(localStorage.getItem('bg_theme'));
+    if(currentThemeIndex===-1) currentThemeIndex = 0;
+    document.documentElement.setAttribute('data-bg', themes[currentThemeIndex]);
+    themeToggle.addEventListener('click', ()=>{
+      currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+      const nextBg = themes[currentThemeIndex];
+      document.documentElement.setAttribute('data-bg', nextBg);
+      localStorage.setItem('bg_theme', nextBg);
+
+      // also toggle light/dark
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+    });
+
+    // reduce motion toggle
+    const reduceMotionToggle = document.getElementById('reduceMotionToggle');
+    let reduceMotion = localStorage.getItem('reduce_motion')==='true';
+    function updateToggleUI(){
+      if(reduceMotion){ reduceMotionToggle.classList.add('on'); reduceMotionToggle.setAttribute('aria-checked','true'); document.body.classList.add('reduce-motion'); } else { reduceMotionToggle.classList.remove('on'); reduceMotionToggle.setAttribute('aria-checked','false'); document.body.classList.remove('reduce-motion'); }
+    }
+    reduceMotionToggle.addEventListener('click', ()=>{ reduceMotion = !reduceMotion; localStorage.setItem('reduce_motion', reduceMotion); updateToggleUI(); });
+    reduceMotionToggle.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); reduceMotion = !reduceMotion; localStorage.setItem('reduce_motion', reduceMotion); updateToggleUI(); }});
+    updateToggleUI();
+
+    function microFeedback(el){ if(!reduceMotion){ el.classList.add('pulse'); setTimeout(()=>el.classList.remove('pulse'),260);} if(navigator.vibrate && !reduceMotion) navigator.vibrate(10);}    
+    const calcBtn = document.getElementById('calcBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    calcBtn.addEventListener('click', ()=>{ microFeedback(calcBtn); });
+    resetBtn.addEventListener('click', ()=>{ microFeedback(resetBtn); resetForm(); });
+
+    function resetForm(){
+      // give micro feedback for reset
+      microFeedback(resetBtn);
+      document.getElementById('calcForm').reset();
+      document.getElementById('attendanceValue').textContent='0%';
+      document.getElementById('effectiveAbsents').textContent='Effective absents: —';
+      ['rewardText','fineText','skip5000','skip3000','skip90'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent='—'; });
+    }
+
+    // Reward overlay functions
+    function playRewardSound(){
+      const s = document.getElementById('rewardSound');
+      if(s && !reduceMotion){ s.currentTime = 0; s.play().catch(()=>{}); }
+    }
+
+    function showRewardOverlay(amount){
+      // set text
+      document.getElementById('rewardTitle').textContent = `You earned ₹${amount}!`;
+      document.getElementById('rewardMessage').textContent = `Fantastic — your attendance qualifies for the ₹${amount} reward.`;
+
+      // show overlay
+      rewardOverlay.classList.add('show'); playRewardSound();
+      rewardOverlay.setAttribute('aria-hidden','false');
+
+      // produce confetti unless reduced motion
+      clearConfetti();
+      if(!reduceMotion){
+        launchConfetti(60);
+      }
+
+      // auto close after 6s unless reduced motion
+      if(!reduceMotion){
+        setTimeout(hideRewardOverlay, 6000);
+      }
+    }
+
+    function hideRewardOverlay(){
+      rewardOverlay.classList.remove('show');
+      rewardOverlay.setAttribute('aria-hidden','true');
+      clearConfetti();
+    }
+
+    closeReward.addEventListener('click', hideRewardOverlay);
+    rewardOverlay.addEventListener('click', (e)=>{ if(e.target===rewardOverlay) hideRewardOverlay(); });
+
+    function clearConfetti(){ confettiContainer.innerHTML = ''; }
+
+    function launchConfetti(count){
+      const colors=["#ff9a5a","#ff6fa7","#b983ff","#ffd166","#60d394"];
+      const w=window.innerWidth;
+      const h=window.innerHeight;
+      for(let i=0;i<count;i++){
+        const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+        svg.setAttribute("class","confetti-piece");
+        svg.style.position="absolute";
+        svg.style.left=(Math.random()*w)+"px";
+        svg.style.top=(Math.random()*h*0.2)+"px";
+        svg.style.width="14px";
+        svg.style.height="14px";
+        const shape=document.createElementNS("http://www.w3.org/2000/svg", Math.random()>0.5?"rect":"polygon");
+        if(shape.tagName==="rect"){
+          shape.setAttribute("width","14");
+          shape.setAttribute("height","14");
+        } else {
+          shape.setAttribute("points","7,0 14,14 0,14");
+        }
+        shape.setAttribute("fill",colors[Math.floor(Math.random()*colors.length)]);
+        svg.appendChild(shape);
+        svg.style.transform=`rotate(${Math.random()*360}deg)`;
+        svg.style.animation=`fall 1500ms linear forwards`;
+        confettiContainer.appendChild(svg);
+      }
+    }
+
+    function doCalculate(){
+      microFeedback(calcBtn);
+      const totalLectures = parseFloat(document.getElementById('totalLectures').value);
+      const totalAbsent = parseFloat(document.getElementById('totalAbsent').value);
+      const totalOAA = parseFloat(document.getElementById('totalOAA').value);
+      if(isNaN(totalLectures) || isNaN(totalAbsent) || isNaN(totalOAA) || totalLectures<=0 || totalAbsent<0 || totalAbsent>totalLectures){ alert('Please enter valid values. Ensure total lectures > 0 and absents ≤ total lectures.'); return; }
+
+      const effectiveAbsents = Math.max(0, totalAbsent - totalOAA);
+      const attendance = 100 - (effectiveAbsents/totalLectures)*100;
+      const finalAttendance = Math.max(0, Math.min(100, attendance));
+
+      document.getElementById('attendanceValue').textContent = finalAttendance.toFixed(2) + '%';
+      document.getElementById('effectiveAbsents').textContent = `Effective absents: ${effectiveAbsents} / ${totalLectures}`;
+
+      let rewardText = 'No reward yet. Aim for 97%+';
+      if(finalAttendance>=99) { rewardText='You qualify for ₹5000 reward (99–100% bracket).'; document.getElementById('rewardText').textContent = rewardText; if(finalAttendance>=99){ showRewardOverlay(5000); } }
+      else if(finalAttendance>=97) { rewardText='You qualify for ₹3000 reward (97–98% bracket).'; document.getElementById('rewardText').textContent = rewardText; if(finalAttendance>=97){ showRewardOverlay(3000); } }
+      else if(finalAttendance>=98.5){
+        document.getElementById('rewardText').textContent = 'Very close! Just a little more!';
+        const rc=document.getElementById('rewardText'); rc.style.animation='glowshake .6s ease'; setTimeout(()=>rc.style.animation='',700);
+      } else { document.getElementById('rewardText').textContent = rewardText; }
+
+      if(finalAttendance < FINE_THRESHOLD){ const shortage = FINE_THRESHOLD - finalAttendance; const chargeablePercent = Math.ceil(shortage); const fineAmount = chargeablePercent * FINE_PER_PERCENT; document.getElementById('fineText').textContent = `Short by ${shortage.toFixed(2)}%. Possible fine: ₹${fineAmount}.`; } else { document.getElementById('fineText').textContent = 'No fine. You are at or above 90%.'; }
+
+      const maxAbsent99 = Math.floor((1/100)*totalLectures);
+      const maxAbsent97 = Math.floor((3/100)*totalLectures);
+      const maxAbsent90 = Math.floor((10/100)*totalLectures);
+      const skip5000 = Math.max(0, maxAbsent99 - effectiveAbsents);
+      const skip3000 = Math.max(0, maxAbsent97 - effectiveAbsents);
+      const skip90 = Math.max(0, maxAbsent90 - effectiveAbsents);
+      document.getElementById('skip5000').textContent = skip5000;
+      document.getElementById('skip3000').textContent = skip3000;
+      document.getElementById('skip90').textContent = skip90;
+
+      if(!reduceMotion){ panel.style.transform='translateY(-6px)'; setTimeout(()=>panel.style.transform='', 350); }
+    }
+
+    document.getElementById('calcForm').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doCalculate(); microFeedback(calcBtn); } });
+  </script>
+  <!-- Sound element -->
+  <audio id="rewardSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7c80175a65.mp3?filename=reward-19921.mp3" preload="auto"></audio>
+
+</body>
+</html>
